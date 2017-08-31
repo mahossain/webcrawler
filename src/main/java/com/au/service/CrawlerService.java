@@ -10,8 +10,16 @@ import java.util.Set;
 
 public interface CrawlerService {
     boolean isValidURL(final String URL) throws IOException;
+
     Optional<Document> findHmlDocument(String URL, String correlationID);
+
     Set<String> findLinks(Document document);
+
     String findTitle(Document document);
+
     Optional<CrawlerInfo> createCrawler(final String url, String correlationID);
+
+    void initVisitLinks(String correlationID);
+
+    void resetVisitedLinksFor(String correlationID);
 }

@@ -10,17 +10,20 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
-
-import static com.au.controller.WebCrawlerController.pageTree;
 
 @Service
 public class CrawlerServiceImpl implements CrawlerService {
     private static final Logger LOG = Logger.getLogger(CrawlerServiceImpl.class.getName());
+    final Map<String, HashSet<String>> visitedLinks = new ConcurrentHashMap<>();
+
     @Value("${web.request.timeout}")
     private int timeout;
     @Value("${web.request.header}")
@@ -29,6 +32,17 @@ public class CrawlerServiceImpl implements CrawlerService {
     private String userAgent;
 
     public CrawlerServiceImpl() {
+    }
+
+    @Override
+    public void initVisitLinks(String correlationID) {
+        visitedLinks.put(correlationID, new HashSet<String>());
+    }
+
+    @Override
+    public void resetVisitedLinksFor(String correlationID) {
+        if (visitedLinks != null)
+            visitedLinks.remove(correlationID);
     }
 
     @Override
@@ -48,9 +62,9 @@ public class CrawlerServiceImpl implements CrawlerService {
 
     @Override
     public Optional<Document> findHmlDocument(final String URL, final String correlationID) {
-        HashSet<String> pageVisited = pageTree.get(correlationID);
+        Set<String> pageVisited = visitedLinks(correlationID);
         try {
-            if (pageVisited != null && !pageVisited.contains(URL)) {
+            if (!pageVisited.contains(URL)) {
                 LOG.info("visiting: " + URL);
                 if (isValidURL(URL)) {
                     final Document document = Jsoup.connect(URL)
@@ -99,10 +113,9 @@ public class CrawlerServiceImpl implements CrawlerService {
         final Document document = documentOptional.get();
         crawlerInfo.setTitle(findTitle(document));
         crawlerInfo.setUrl(url);
-        HashSet<String> pageVisited = pageTree.get(correlationID);
         Set<String> links = findLinks(document);
         links.parallelStream()
-                .filter(link -> !pageVisited.contains(link))
+                .filter(link -> !visitedLinks(correlationID).contains(link))
                 .forEach(link -> {
                     CrawlerInfo child = new CrawlerInfo(link);
                     Optional<Document> childDocumentOptional = findHmlDocument(link, correlationID);
@@ -112,5 +125,10 @@ public class CrawlerServiceImpl implements CrawlerService {
                     crawlerInfo.addChild(child);
                 });
         return Optional.of(crawlerInfo);
+    }
+
+    private Set<String> visitedLinks(String correlationID) {
+        HashSet<String> visitedLinks = this.visitedLinks.get(correlationID);
+        return visitedLinks != null ? visitedLinks : Collections.<String>emptySet();
     }
 }

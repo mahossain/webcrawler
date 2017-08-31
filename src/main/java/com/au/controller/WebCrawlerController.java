@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.ConnectException;
 import java.net.UnknownHostException;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,8 +28,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 @ControllerAdvice
 @RequestMapping("/crawler")
 public class WebCrawlerController {
-    public final static Map<String, HashSet<String>> pageTree = new ConcurrentHashMap<>();
-    public final static Map<String, Integer> depthTree = new ConcurrentHashMap<>();
+    private Map<String, Integer> depthTree = new ConcurrentHashMap<>();
     private final CrawlerService crawlerService;
     private final CrawlerInfoRepository crawlerInfoRepository;
 
@@ -45,12 +43,12 @@ public class WebCrawlerController {
     public @ResponseBody CrawlerInfo crawl(@PathVariable(value = "limit") int limit,
                                            @RequestParam(value = "url", required = true) String url) throws Exception {
 
-        final String correlationID = UUID.randomUUID().toString();
-        pageTree.put(correlationID, new HashSet<String>());
-
         if (!crawlerService.isValidURL(url)) {
             throw new ConnectException(url + " is not accessible or invalid");
         }
+
+        final String correlationID = UUID.randomUUID().toString();
+        crawlerService.initVisitLinks(correlationID);
 
         Optional<CrawlerInfo> fromDB = crawlerInfoRepository.findByUrl(url);
         if (fromDB.isPresent()) {
@@ -67,7 +65,7 @@ public class WebCrawlerController {
 
             crawlerInfo.setId(correlationID);
             crawlerInfoRepository.save(crawlerInfo);
-
+            reset(correlationID);
             return crawlerInfo;
         }
         return new CrawlerInfo(url);
@@ -95,6 +93,11 @@ public class WebCrawlerController {
                             }
                         }
                 );
+    }
+
+    private void reset(final String correlationID) {
+        crawlerService.resetVisitedLinksFor(correlationID);
+        depthTree.remove(correlationID);
     }
 
     @ExceptionHandler(value = {UnknownHostException.class, ConnectException.class})

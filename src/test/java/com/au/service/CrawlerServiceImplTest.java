@@ -15,11 +15,9 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.au.controller.WebCrawlerController.pageTree;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -62,7 +60,7 @@ public class CrawlerServiceImplTest {
         given(connection.header(anyString(), anyString())).willReturn(connection);
         given(connection.userAgent(anyString())).willReturn(connection);
         final String correlationID = randomUUID().toString();
-        pageTree.put(correlationID, new HashSet<String>());
+        crawlerService.initVisitLinks(correlationID);
         Optional<Document> documentOptional = crawlerService.findHmlDocument("http://google.com", correlationID);
         assertThat(documentOptional.isPresent(), is(true));
         assertThat(documentOptional.get(), notNullValue());
