@@ -21,7 +21,9 @@ import java.util.logging.Logger;
 
 @Service
 public class CrawlerServiceImpl implements CrawlerService {
+
     private static final Logger LOG = Logger.getLogger(CrawlerServiceImpl.class.getName());
+
     final Map<String, HashSet<String>> visitedLinks = new ConcurrentHashMap<>();
 
     @Value("${web.request.timeout}")
@@ -115,7 +117,7 @@ public class CrawlerServiceImpl implements CrawlerService {
         crawlerInfo.setUrl(url);
         Set<String> links = findLinks(document);
         links.parallelStream()
-                .filter(link -> !visitedLinks(correlationID).contains(link))
+                .filter(link -> !(visitedLinks(correlationID).contains(link)))
                 .forEach(link -> {
                     CrawlerInfo child = new CrawlerInfo(link);
                     Optional<Document> childDocumentOptional = findHmlDocument(link, correlationID);
